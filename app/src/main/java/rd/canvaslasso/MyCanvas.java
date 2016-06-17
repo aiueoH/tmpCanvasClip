@@ -1,6 +1,7 @@
 package rd.canvaslasso;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -14,10 +15,12 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.Region;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
 import java.util.ArrayList;
@@ -74,6 +77,28 @@ public class MyCanvas extends RelativeLayout {
             isFirstDraw = false;
             mainBitmap = Bitmap.createBitmap(canvas.getWidth(), canvas.getHeight(), Bitmap.Config.ARGB_8888);
             mainCanvas = new Canvas(mainBitmap);
+            mainCanvas.drawColor(Color.GRAY);
+            Paint p = new Paint();
+            p.setColor(Color.BLUE);
+            p.setStrokeWidth(1);
+            p.setStyle(Paint.Style.FILL_AND_STROKE);
+            p.setTextSize(20);
+            Paint pp = new Paint(p);
+            pp.setColor(Color.RED);
+            pp.setStrokeWidth(10);
+            for (int i = 0 ; i < mainCanvas.getWidth(); i += 100) {
+//                mainCanvas.drawLine(i, 0, i, mainCanvas.getHeight(), p);
+            }
+            for (int i = 0; i < mainCanvas.getHeight(); i += 100) {
+//                mainCanvas.drawLine(0, i, mainCanvas.getWidth(), i, p);
+            }
+            for (int x = 0; x < mainCanvas.getWidth(); x += 100) {
+                for (int y = 0; y < mainCanvas.getHeight(); y += 100) {
+                    String s = String.format("(%s, %s)", x, y);
+                    mainCanvas.drawText(s, x, y, p);
+                    mainCanvas.drawPoint(x, y, pp);
+                }
+            }
         }
         canvas.drawBitmap(mainBitmap, 0, 0, null);
         if (mode.equals(Mode.Lasso) && drawingLassoBitmap != null) {
@@ -134,9 +159,10 @@ public class MyCanvas extends RelativeLayout {
         // create lass bitmap
         Rect rect = computeLassoRect(mainBitmap, lassoPath);
         final Bitmap lassoBitmap = Bitmap.createBitmap(rect.width(), rect.height(), Bitmap.Config.ARGB_8888);
+        lassoPath.offset(-rect.left, -rect.top);
         Canvas c = new Canvas(lassoBitmap);
         c.save();
-        c.translate(-rect.left, -rect.top);
+//        c.translate(-rect.left, -rect.top);
         c.drawPath(lassoPath, lassoPaint);
         c.restore();
 
@@ -146,20 +172,13 @@ public class MyCanvas extends RelativeLayout {
         addView(lassoBox);
         lassoBox.setLassoBitmap(lassoBitmap);
         lassoBox.setSizeAndPosition(rect);
-        lassoBox.setOnTranslateListener(new LassoBox.OnTranslateListener() {
-            @Override
-            public void onTranslate(float x, float y) {
-                Matrix matrix = new Matrix();
-                matrix.setTranslate(-x, -y);
-                lassoPath.transform(matrix);
-            }
-        });
         lassoBox.setOnRotateListener(new LassoBox.OnRotateListener() {
             @Override
             public void onRotate(float degree) {
+                Rect r = computeLassoRect(mainBitmap, lassoPath);
                 Matrix matrix = new Matrix();
-                matrix.setRotate(degree);
-//                lassoPath.transform(matrix);
+                matrix.setRotate(degree, r.centerX(), r.centerY());
+                lassoPath.transform(matrix);
             }
         });
 
@@ -221,9 +240,10 @@ public class MyCanvas extends RelativeLayout {
         Rect roi = computeLassoRect(src, lasso);
         Bitmap dst = Bitmap.createBitmap(roi.width(), roi.height(), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(dst);
-        c.translate(-roi.left, -roi.top);
         c.clipPath(lasso);
+        c.translate(-lassoBox.getLassoX(), -lassoBox.getLassoY());
         c.drawBitmap(src, 0, 0, null);
+        showBitmapDialog(dst);
         return dst;
     }
 
@@ -242,6 +262,7 @@ public class MyCanvas extends RelativeLayout {
         stickerLassoBitmap = copyLassoArea(mainBitmap, lassoPath);
         lassoBox.setStickerBitmap(stickerLassoBitmap);
         mainCanvas.save();
+        mainCanvas.translate(lassoBox.getLassoX(), lassoBox.getLassoY());
         mainCanvas.clipPath(lassoPath);
         mainCanvas.drawPaint(eraser);
         mainCanvas.restore();
@@ -258,7 +279,7 @@ public class MyCanvas extends RelativeLayout {
         float x = lassoBox.getLassoX();
         float y = lassoBox.getLassoY();
         mainCanvas.save();
-        mainCanvas.rotate(lassoBox.getRotation());
+//        mainCanvas.rotate(lassoBox.getRotation());
         mainCanvas.drawBitmap(stickerLassoBitmap, x, y, null);
 //        mainCanvas.drawPath(lassoPath, lassoPaint);
         mainCanvas.restore();
@@ -304,5 +325,17 @@ public class MyCanvas extends RelativeLayout {
 
     private float getDensity() {
         return getResources().getDisplayMetrics().density;
+    }
+
+    private void showBitmapDialog(Bitmap bitmap) {
+        bitmap = Bitmap.createScaledBitmap(bitmap, bitmap.getWidth() * 2, bitmap.getHeight() * 2, false);
+        ImageView imageView = new ImageView(getContext());
+        imageView.setImageBitmap(bitmap);
+        imageView.setBackgroundColor(Color.BLACK);
+        LinearLayout linearLayout = new LinearLayout(getContext());
+        linearLayout.addView(imageView);
+        new AlertDialog.Builder(getContext())
+                .setView(linearLayout)
+                .show();
     }
 }

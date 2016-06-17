@@ -40,6 +40,9 @@ public class LassoBox extends RelativeLayout {
     private OnTranslateListener onTranslateListener;
     private OnRotateListener onRotateListener;
 
+    private float rawCenterX;
+    private float rawCenterY;
+
     public LassoBox(Context context) {
         super(context);
         initView();
@@ -67,6 +70,19 @@ public class LassoBox extends RelativeLayout {
         lp.height = lassoRect.height() + paddingH;
     }
 
+    private void updateRawCenterXY() {
+        if (getRotation() != 0) return;
+        int[] location = new int[2];
+        getLocationOnScreen(location);
+        rawCenterX = location[0] + getWidth() / 2;
+        rawCenterY = location[1] + getHeight() / 2;
+    }
+
+    private void offsetRawCenterXY(float dX, float dY) {
+        rawCenterX += dX;
+        rawCenterY += dY;
+    }
+
     private void setupOnTouchListener() {
         setOnTouchListener(new OnTouchListener() {
             float dX, dY, startX, startY;
@@ -85,6 +101,7 @@ public class LassoBox extends RelativeLayout {
                         break;
                     case MotionEvent.ACTION_UP:
                         onTranslate(startX - event.getRawX(), startY - event.getRawY());
+                        offsetRawCenterXY(event.getRawX() - startX, event.getRawY() - startY);
                         break;
                 }
                 return true;
@@ -94,13 +111,8 @@ public class LassoBox extends RelativeLayout {
     public Activity activity;
     private void setRoate() {
         rotateRightTopButton.setOnTouchListener(new OnTouchListener() {
-            float startX, startY;
-            float cX = getX() + getWidth() / 2;
-            float cY = getY() + getHeight() / 2;
-            float angle1;
-            float a1;
+            float startDegree;
             float originalRotation;
-            int[] location = new int[2];
             float dX, dY;
             TopView topView = new TopView(getContext());
             ViewGroup getRoot() {
@@ -111,28 +123,22 @@ public class LassoBox extends RelativeLayout {
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
+                        updateRawCenterXY();
                         getRoot().addView(topView);
-                        getLocationOnScreen(location);
-                        cX = location[0] + getWidth() / 2;
-                        cY = location[1] + getHeight() / 2;
-                        dX = event.getRawX() - cX;
-                        dY = event.getRawY() - cY;
-                        a1 = (float) Math.toDegrees(Math.atan((dY / dX)));
+                        dX = event.getRawX() - rawCenterX;
+                        dY = event.getRawY() - rawCenterY;
+                        startDegree = (float) Math.toDegrees(Math.atan((dY / dX)));
                         originalRotation = getRotation();
-                        topView.cX = cX;
-                        topView.cY = cY;
+                        topView.cX = rawCenterX;
+                        topView.cY = rawCenterY;
                         topView.pX = event.getRawX();
                         topView.pY = event.getRawY();
                         break;
                     case MotionEvent.ACTION_MOVE:
-                        int[] tmp = new int[2];
-                        getLocationOnScreen(tmp);
-                        Log.d("LassoBox", tmp[0] + "," + tmp[1]);
-                        Log.d("LassoBox", "getWidth():" + getWidth());
-                        dX = event.getRawX() - cX;
-                        dY = event.getRawY() - cY;
-                        float a2 = (float) Math.toDegrees(Math.atan(dY / dX));
-                        setRotation(originalRotation + a2 - a1);
+                        dX = event.getRawX() - rawCenterX;
+                        dY = event.getRawY() - rawCenterY;
+                        float currentDegree = (float) Math.toDegrees(Math.atan(dY / dX));
+                        setRotation(originalRotation + currentDegree - startDegree);
                         invalidate();
                         topView.pX = event.getRawX();
                         topView.pY = event.getRawY();
