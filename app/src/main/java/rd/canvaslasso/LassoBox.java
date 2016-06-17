@@ -6,7 +6,9 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.Region;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -68,6 +70,13 @@ public class LassoBox extends RelativeLayout {
         lp.setMargins(lassoRect.left - paddingW / 2, lassoRect.top - paddingH / 2, 0 ,0);
         lp.width = lassoRect.width() + paddingW;
         lp.height = lassoRect.height() + paddingH;
+        setLayoutParams(lp);
+        post(new Runnable() {
+            @Override
+            public void run() {
+                updateRawCenterXY();
+            }
+        });
     }
 
     private void updateRawCenterXY() {
@@ -123,7 +132,6 @@ public class LassoBox extends RelativeLayout {
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        updateRawCenterXY();
                         getRoot().addView(topView);
                         dX = event.getRawX() - rawCenterX;
                         dY = event.getRawY() - rawCenterY;
@@ -209,12 +217,16 @@ public class LassoBox extends RelativeLayout {
             lPaint = new Paint(pPaint);
             lPaint.setColor(Color.GREEN);
             lPaint.setStrokeWidth(1);
+            rPaint = new Paint(lPaint);
+            rPaint.setColor(Color.YELLOW);
+            rPaint.setStrokeWidth(3);
         }
 
         float cX, cY;
         float pX, pY;
+        Rect r;
 
-        Paint pPaint, cPaint, lPaint;
+        Paint pPaint, cPaint, lPaint, rPaint;
 
         @Override
         protected void onDraw(Canvas canvas) {
