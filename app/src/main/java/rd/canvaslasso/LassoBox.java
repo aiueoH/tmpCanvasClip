@@ -116,7 +116,7 @@ public class LassoBox extends RelativeLayout {
     }
     public Activity activity;
     private void setRotate() {
-        rotateRightTopButton.setOnTouchListener(new OnTouchListener() {
+        OnTouchListener onTouchListener = new OnTouchListener() {
             float startDegree;
             float originalRotation;
             float dX, dY;
@@ -157,7 +157,9 @@ public class LassoBox extends RelativeLayout {
                 }
                 return true;
             }
-        });
+        };
+        rotateRightTopButton.setOnTouchListener(onTouchListener);
+        rotateLeftBottomButton.setOnTouchListener(onTouchListener);
     }
 
     private void onTranslate(float x, float y) {
