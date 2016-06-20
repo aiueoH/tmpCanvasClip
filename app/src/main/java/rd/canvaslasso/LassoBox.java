@@ -6,10 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.Rect;
-import android.graphics.Region;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -56,7 +53,7 @@ public class LassoBox extends RelativeLayout {
         View view = layoutInflater.inflate(R.layout.widget_lasso_frame, null);
         addView(view);
         ButterKnife.bind(this);
-        setRoate();
+        setRotate();
     }
 
     public void setSizeAndPosition(Rect lassoRect) {
@@ -118,7 +115,7 @@ public class LassoBox extends RelativeLayout {
         });
     }
     public Activity activity;
-    private void setRoate() {
+    private void setRotate() {
         rotateRightTopButton.setOnTouchListener(new OnTouchListener() {
             float startDegree;
             float originalRotation;
