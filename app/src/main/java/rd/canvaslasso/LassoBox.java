@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -36,6 +37,7 @@ public class LassoBox extends RelativeLayout {
     @Bind(R.id.button_scale_right_bottom)
     Button scaleRightBottomButton;
 
+    public Activity activity;
     private OnTranslateListener onTranslateListener;
     private OnRotateListener onRotateListener;
 
@@ -72,6 +74,7 @@ public class LassoBox extends RelativeLayout {
             @Override
             public void run() {
                 updateRawCenterXY();
+                setScale();
             }
         });
     }
@@ -114,7 +117,51 @@ public class LassoBox extends RelativeLayout {
             }
         });
     }
-    public Activity activity;
+
+    private void setScale() {
+        OnTouchListener onTouchListener = new OnTouchListener() {
+            float startX, startY;
+            int originalWidth;
+            int originalHeight;
+            int originalLeftMargin;
+            int originalTopMargin;
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                float cX = event.getRawX();
+                float cY = event.getRawY();
+                RelativeLayout.LayoutParams lp = ((RelativeLayout.LayoutParams) getLayoutParams());
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startX = cX;
+                        startY = cY;
+                        originalWidth = lp.width;
+                        originalHeight = lp.height;
+                        originalLeftMargin = lp.leftMargin;
+                        originalTopMargin = lp.topMargin;
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        float dX = startX > rawCenterX ? cX - startX : startX - cX;
+                        float dY = startY > rawCenterY ? cY - startY : startY - cY;
+                        Log.d("LassoBox", "lp.rightMargin:" + lp.rightMargin);
+                        lp.width = (int) (originalWidth + dX);
+                        lp.height = (int) (originalHeight + dY);
+                        if (startX > rawCenterX) {
+                        } else {
+                            lp.leftMargin = originalLeftMargin + originalWidth - lp.width;
+                            lp.topMargin = originalTopMargin + originalHeight - lp.height;
+                        }
+                        setLayoutParams(lp);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        break;
+                }
+                return true;
+            }
+        };
+        scaleLeftTopButton.setOnTouchListener(onTouchListener);
+        scaleRightBottomButton.setOnTouchListener(onTouchListener);
+    }
+
     private void setRotate() {
         OnTouchListener onTouchListener = new OnTouchListener() {
             float startDegree;
