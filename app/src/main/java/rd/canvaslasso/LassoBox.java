@@ -17,6 +17,9 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import butterknife.Bind;
 import butterknife.ButterKnife;
 
@@ -43,6 +46,9 @@ public class LassoBox extends RelativeLayout {
 
     private float rawCenterX;
     private float rawCenterY;
+
+    private float screenDiffX;
+    private float screenDiffY;
 
     public LassoBox(Context context) {
         super(context);
@@ -73,6 +79,11 @@ public class LassoBox extends RelativeLayout {
         post(new Runnable() {
             @Override
             public void run() {
+                int[] l = new int[2];
+                getLocationOnScreen(l);
+                screenDiffX = l[0] - getX();
+                screenDiffY = l[1] - getY();
+
                 updateRawCenterXY();
                 setScale();
             }
@@ -121,10 +132,16 @@ public class LassoBox extends RelativeLayout {
     private void setScale() {
         OnTouchListener onTouchListener = new OnTouchListener() {
             float startX, startY;
+            float rawStartX, rawStartY;
             int originalWidth;
             int originalHeight;
             int originalLeftMargin;
             int originalTopMargin;
+
+            int originalLeft = getLeft();
+            int originalRight = getRight();
+            int originalTop = getTop();
+            int originalBottom = getBottom();
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 float cX = event.getRawX();
@@ -134,28 +151,53 @@ public class LassoBox extends RelativeLayout {
                     case MotionEvent.ACTION_DOWN:
                         startX = cX;
                         startY = cY;
-                        originalWidth = lp.width;
-                        originalHeight = lp.height;
+                        rawStartX = event.getRawX();
+                        rawStartY = event.getRawY();
+                        originalWidth = getWidth();
+                        originalHeight = getHeight();
                         originalLeftMargin = lp.leftMargin;
                         originalTopMargin = lp.topMargin;
+
+                        originalBottom = getBottom();
+                        originalLeft = getLeft();
+                        originalTop = getTop();
+                        originalRight = getRight();
                         break;
                     case MotionEvent.ACTION_MOVE:
                         float dX = startX > rawCenterX ? cX - startX : startX - cX;
                         float dY = startY > rawCenterY ? cY - startY : startY - cY;
-                        Log.d("LassoBox", "lp.rightMargin:" + lp.rightMargin);
+                        Log.d("LassoBox", String.format("%s, %s, %s, %s", getLeft(), getTop(), getRight(), getBottom()));
                         lp.width = (int) (originalWidth + dX);
                         lp.height = (int) (originalHeight + dY);
-                        if (startX > rawCenterX) {
-                        } else {
-                            lp.leftMargin = originalLeftMargin + originalWidth - lp.width;
-                            lp.topMargin = originalTopMargin + originalHeight - lp.height;
-                        }
                         setLayoutParams(lp);
+                        if (startX > rawCenterX) {
+                            setLeft(originalLeft);
+                            setTop(originalTop);
+                        } else {
+                            setRight(0);
+                            setBottom(originalBottom);
+                        }
                         break;
                     case MotionEvent.ACTION_UP:
+//                        setPivotX(getWidth() / 2);
+//                        setPivotY(getHeight() / 2);
                         break;
                 }
                 return true;
+            }
+            private void restoreViews() {
+                restoreView(scaleLeftTopButton);
+                restoreView(scaleRightBottomButton);
+                restoreView(rotateLeftBottomButton);
+                restoreView(rotateRightTopButton);
+                restoreView(lassoImageView);
+                restoreView(stickerImageView);
+            }
+
+            private void restoreView(View v) {
+                Log.d("LassoBox", "v.getScaleX():" + v.getScaleX());
+                v.setScaleX(1);
+                v.setScaleY(1);
             }
         };
         scaleLeftTopButton.setOnTouchListener(onTouchListener);
@@ -177,18 +219,18 @@ public class LassoBox extends RelativeLayout {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         getRoot().addView(topView);
-                        dX = event.getRawX() - rawCenterX;
-                        dY = event.getRawY() - rawCenterY;
+                        dX = event.getRawX() - getRawPivotX();
+                        dY = event.getRawY() - getRawPivotY();
                         startDegree = (float) Math.toDegrees(Math.atan((dY / dX)));
                         originalRotation = getRotation();
-                        topView.cX = rawCenterX;
-                        topView.cY = rawCenterY;
+                        topView.cX = getRawPivotX();
+                        topView.cY = getRawPivotY();
                         topView.pX = event.getRawX();
                         topView.pY = event.getRawY();
                         break;
                     case MotionEvent.ACTION_MOVE:
-                        dX = event.getRawX() - rawCenterX;
-                        dY = event.getRawY() - rawCenterY;
+                        dX = event.getRawX() - getRawPivotX();
+                        dY = event.getRawY() - getRawPivotY();
                         float currentDegree = (float) Math.toDegrees(Math.atan(dY / dX));
                         setRotation(originalRotation + currentDegree - startDegree);
                         invalidate();
@@ -242,12 +284,31 @@ public class LassoBox extends RelativeLayout {
         stickerImageView.setImageBitmap(bitmap);
     }
 
+    private float getRawPivotX() {
+        return getX() + getPivotX() + screenDiffX;
+    }
+
+    private float getRawPivotY() {
+        return getY() + getPivotY() + screenDiffY;
+    }
+
     public interface OnTranslateListener {
         void onTranslate(float x, float y);
     }
 
     public interface OnRotateListener {
         void onRotate(float degree);
+    }
+
+    List<Bitmap> bitmapList = new ArrayList<>();
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        for (Bitmap bitmap : bitmapList) {
+            canvas.drawBitmap(bitmap, 0, 0, null);
+            bitmap.recycle();
+        }
+        bitmapList.clear();
     }
 
     class TopView extends View {
@@ -270,6 +331,7 @@ public class LassoBox extends RelativeLayout {
 
         float cX, cY;
         float pX, pY;
+        float ppX, ppY;
         Rect r;
 
         Paint pPaint, cPaint, lPaint, rPaint;
@@ -280,6 +342,10 @@ public class LassoBox extends RelativeLayout {
             canvas.drawPoint(cX, cY, cPaint);
             canvas.drawPoint(pX, pY, pPaint);
             canvas.drawLine(cX, cY, pX, pY, lPaint);
+            Paint t = new Paint(cPaint);
+            t.setColor(Color.CYAN);
+            t.setStrokeWidth(20);
+//            canvas.drawPoint(ppX, ppY, t);
         }
     }
 }
