@@ -511,7 +511,6 @@ public class LassoBox extends RelativeLayout {
             Paint t = new Paint(cPaint);
             t.setColor(Color.CYAN);
             t.setStrokeWidth(20);
-//            canvas.drawPoint(ppX, ppY, t);
         }
     }
 }
