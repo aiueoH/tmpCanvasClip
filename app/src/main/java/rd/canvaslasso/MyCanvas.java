@@ -92,12 +92,6 @@ public class MyCanvas extends RelativeLayout {
             Paint pp = new Paint(p);
             pp.setColor(Color.RED);
             pp.setStrokeWidth(10);
-            for (int i = 0 ; i < mainCanvas.getWidth(); i += 100) {
-//                mainCanvas.drawLine(i, 0, i, mainCanvas.getHeight(), p);
-            }
-            for (int i = 0; i < mainCanvas.getHeight(); i += 100) {
-//                mainCanvas.drawLine(0, i, mainCanvas.getWidth(), i, p);
-            }
             for (int x = 0; x < mainCanvas.getWidth(); x += 100) {
                 for (int y = 0; y < mainCanvas.getHeight(); y += 100) {
                     String s = String.format("(%s, %s)", x, y);
@@ -165,9 +159,6 @@ public class MyCanvas extends RelativeLayout {
             Rect rect = computeLassoRect(lassoPath);
             if (rect.width() > 0 && rect.height() > 0)
                 onFinishLasso();
-//            TODO:
-//            else
-//                cancelLasso
         }
     }
 
@@ -178,16 +169,6 @@ public class MyCanvas extends RelativeLayout {
         // clear drawing lasso
         drawingLassoBitmap.recycle();
         drawingLassoBitmap = null;
-        // create lass bitmap
-//        Rect rect = computeLassoRect(mainBitmap, lassoPath);
-//        final Bitmap lassoBitmap = Bitmap.createBitmap(rect.width(), rect.height(), Bitmap.Config.ARGB_8888);
-//        lassoPath.offset(-rect.left, -rect.top);
-//        Canvas c = new Canvas(lassoBitmap);
-//        c.save();
-//        c.translate(-rect.left, -rect.top);
-//        c.drawPath(lassoPath, lassoPaint);
-//        c.restore();
-
         // create lassBox
         lassoBox = new LassoBox(getContext(), this, lassoPath);
         lassoBox.activity = activity;
@@ -337,18 +318,6 @@ public class MyCanvas extends RelativeLayout {
             }
         });
         return view;
-    }
-
-    private int dpToPx(float dp) {
-        return (int) (dp * getDensity());
-    }
-
-    private float pxToDp(float px) {
-        return px / getDensity();
-    }
-
-    private float getDensity() {
-        return getResources().getDisplayMetrics().density;
     }
 
     private void showBitmapDialog(Bitmap bitmap) {
