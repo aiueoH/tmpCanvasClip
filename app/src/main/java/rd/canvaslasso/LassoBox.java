@@ -5,14 +5,14 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PointF;
 import android.graphics.Rect;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
@@ -44,16 +44,20 @@ public class LassoBox extends RelativeLayout {
     private OnTranslateListener onTranslateListener;
     private OnRotateListener onRotateListener;
 
-    private float rawCenterX;
-    private float rawCenterY;
+    ////////////////////////////////////////
+    private float canvasScreenDiffX;
+    private float canvasScreenDiffY;
+    private Rectangle rectangle;
+    ////////////////////////////////////////
+    private Path lasso;
 
-    private float screenDiffX;
-    private float screenDiffY;
-
-    public LassoBox(Context context) {
+    public LassoBox(Context context, Path lasso) {
         super(context);
+        this.lasso = lasso;
         initView();
         setupOnTouchListener();
+        setRotate();
+        setScale();
     }
 
     private void initView() {
@@ -61,7 +65,6 @@ public class LassoBox extends RelativeLayout {
         View view = layoutInflater.inflate(R.layout.widget_lasso_frame, null);
         addView(view);
         ButterKnife.bind(this);
-        setRotate();
     }
 
     public void setSizeAndPosition(Rect lassoRect) {
@@ -71,57 +74,61 @@ public class LassoBox extends RelativeLayout {
         int paddingH = 0;
         if (lassoRect.width() < mW) paddingW = mW - lassoRect.width();
         if (lassoRect.height() < mH) paddingH = mH - lassoRect.height();
+
+        float left = lassoRect.left - paddingW / 2;
+        float top = lassoRect.top - paddingH / 2;
+        float right = lassoRect.right + paddingW / 2;
+        float bottom = lassoRect.bottom + paddingH / 2;
+        PointF[] points = new PointF[4];
+        points[0] = new PointF(left, top);
+        points[1] = new PointF(left, bottom);
+        points[2] = new PointF(right, bottom);
+        points[3] = new PointF(right, top);
+        rectangle = new Rectangle(points);
+        rectangle.setMinWidth(mW);
+        rectangle.setMinHeight(mH);
+
         RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) getLayoutParams();
-        lp.setMargins(lassoRect.left - paddingW / 2, lassoRect.top - paddingH / 2, 0 ,0);
-        lp.width = lassoRect.width() + paddingW;
-        lp.height = lassoRect.height() + paddingH;
-        setLayoutParams(lp);
+        lp.width = (int) rectangle.getWidth();
+        lp.height = (int) rectangle.getHeight();
+        setX(rectangle.getX());
+        setY(rectangle.getY());
+
         post(new Runnable() {
             @Override
             public void run() {
-                int[] l = new int[2];
-                getLocationOnScreen(l);
-                screenDiffX = l[0] - getX();
-                screenDiffY = l[1] - getY();
-
-                updateRawCenterXY();
-                setScale();
+                int[] xy = new int[2];
+                getLocationOnScreen(xy);
+                canvasScreenDiffX = xy[0] - getX();
+                canvasScreenDiffY = xy[1] - getY();
             }
         });
     }
 
-    private void updateRawCenterXY() {
-        if (getRotation() != 0) return;
-        int[] location = new int[2];
-        getLocationOnScreen(location);
-        rawCenterX = location[0] + getWidth() / 2;
-        rawCenterY = location[1] + getHeight() / 2;
-    }
-
-    private void offsetRawCenterXY(float dX, float dY) {
-        rawCenterX += dX;
-        rawCenterY += dY;
-    }
-
     private void setupOnTouchListener() {
         setOnTouchListener(new OnTouchListener() {
-            float dX, dY, startX, startY;
+            float cX, cY;
+            float pX, pY;
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+                cX = event.getRawX() - canvasScreenDiffX;
+                cY = event.getRawY() - canvasScreenDiffY;
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        dX = getX() - event.getRawX();
-                        dY = getY() - event.getRawY();
-                        startX = event.getRawX();
-                        startY = event.getRawY();
+                        pX = cX;
+                        pY = cY;
                         break;
                     case MotionEvent.ACTION_MOVE:
-                        setX(event.getRawX() + dX);
-                        setY(event.getRawY() + dY);
+                        // Rectangle
+                        rectangle.translate(cX - pX, cY - pY);
+                        // LassoBox
+                        setX(rectangle.getX());
+                        setY(rectangle.getY());
+                        pX = cX;
+                        pY = cY;
+                        invalidate();
                         break;
                     case MotionEvent.ACTION_UP:
-                        onTranslate(startX - event.getRawX(), startY - event.getRawY());
-                        offsetRawCenterXY(event.getRawX() - startX, event.getRawY() - startY);
                         break;
                 }
                 return true;
@@ -131,117 +138,69 @@ public class LassoBox extends RelativeLayout {
 
     private void setScale() {
         OnTouchListener onTouchListener = new OnTouchListener() {
-            float startX, startY;
-            float rawStartX, rawStartY;
-            int originalWidth;
-            int originalHeight;
-            int originalLeftMargin;
-            int originalTopMargin;
-
-            int originalLeft = getLeft();
-            int originalRight = getRight();
-            int originalTop = getTop();
-            int originalBottom = getBottom();
+            float downX, downY;
+            float dX, dY;
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                float cX = event.getRawX();
-                float cY = event.getRawY();
-                RelativeLayout.LayoutParams lp = ((RelativeLayout.LayoutParams) getLayoutParams());
+                float cX = event.getRawX() - canvasScreenDiffX;
+                float cY = event.getRawY() - canvasScreenDiffY;
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        startX = cX;
-                        startY = cY;
-                        rawStartX = event.getRawX();
-                        rawStartY = event.getRawY();
-                        originalWidth = getWidth();
-                        originalHeight = getHeight();
-                        originalLeftMargin = lp.leftMargin;
-                        originalTopMargin = lp.topMargin;
-
-                        originalBottom = getBottom();
-                        originalLeft = getLeft();
-                        originalTop = getTop();
-                        originalRight = getRight();
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        float dX = startX > rawCenterX ? cX - startX : startX - cX;
-                        float dY = startY > rawCenterY ? cY - startY : startY - cY;
-                        Log.d("LassoBox", String.format("%s, %s, %s, %s", getLeft(), getTop(), getRight(), getBottom()));
-                        lp.width = (int) (originalWidth + dX);
-                        lp.height = (int) (originalHeight + dY);
-                        setLayoutParams(lp);
-                        if (startX > rawCenterX) {
-                            setLeft(originalLeft);
-                            setTop(originalTop);
-                        } else {
-                            setRight(0);
-                            setBottom(originalBottom);
+                        downX = cX;
+                        downY = cY;
+                        if (v == scaleRightBottomButton) {
+                            dX = cX - rectangle.getX(Rectangle.Points.RightBottom);
+                            dY = cY - rectangle.getY(Rectangle.Points.RightBottom);
+                        } else if (v == scaleLeftTopButton) {
+                            dX = cX - rectangle.getX(Rectangle.Points.LeftTop);
+                            dY = cY - rectangle.getY(Rectangle.Points.LeftTop);
                         }
                         break;
+                    case MotionEvent.ACTION_MOVE:
+                        if (v == scaleRightBottomButton)
+                            rectangle.scaleByMoveRightBottomPoint(cX - dX, cY - dY);
+                        else if (v == scaleLeftTopButton)
+                            rectangle.scaleByMoveLeftTopPoint(cX - dX, cY - dY);
+                        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) getLayoutParams();
+                        lp.width = (int) rectangle.getWidth();
+                        lp.height = (int) rectangle.getHeight();
+                        setLayoutParams(lp);
+                        setX(rectangle.getX());
+                        setY(rectangle.getY());
+                        invalidate();
+                        break;
                     case MotionEvent.ACTION_UP:
-//                        setPivotX(getWidth() / 2);
-//                        setPivotY(getHeight() / 2);
                         break;
                 }
-                return true;
-            }
-            private void restoreViews() {
-                restoreView(scaleLeftTopButton);
-                restoreView(scaleRightBottomButton);
-                restoreView(rotateLeftBottomButton);
-                restoreView(rotateRightTopButton);
-                restoreView(lassoImageView);
-                restoreView(stickerImageView);
-            }
-
-            private void restoreView(View v) {
-                Log.d("LassoBox", "v.getScaleX():" + v.getScaleX());
-                v.setScaleX(1);
-                v.setScaleY(1);
+                return false;
             }
         };
         scaleLeftTopButton.setOnTouchListener(onTouchListener);
         scaleRightBottomButton.setOnTouchListener(onTouchListener);
     }
 
+
+
     private void setRotate() {
         OnTouchListener onTouchListener = new OnTouchListener() {
-            float startDegree;
-            float originalRotation;
-            float dX, dY;
-            TopView topView = new TopView(getContext());
-            ViewGroup getRoot() {
-                ViewParent viewParent = (ViewGroup) activity.findViewById(android.R.id.content).getRootView();
-                return (ViewGroup) viewParent;
-            }
+            float cX, cY;
+            float cD;
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+                cX = event.getRawX() - canvasScreenDiffX;
+                cY = event.getRawY() - canvasScreenDiffY;
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        getRoot().addView(topView);
-                        dX = event.getRawX() - getRawPivotX();
-                        dY = event.getRawY() - getRawPivotY();
-                        startDegree = (float) Math.toDegrees(Math.atan((dY / dX)));
-                        originalRotation = getRotation();
-                        topView.cX = getRawPivotX();
-                        topView.cY = getRawPivotY();
-                        topView.pX = event.getRawX();
-                        topView.pY = event.getRawY();
+                        cD = (float) Math.toDegrees(Math.atan((cY - rectangle.getCenterY()) / (cX - rectangle.getCenterX())));
                         break;
                     case MotionEvent.ACTION_MOVE:
-                        dX = event.getRawX() - getRawPivotX();
-                        dY = event.getRawY() - getRawPivotY();
-                        float currentDegree = (float) Math.toDegrees(Math.atan(dY / dX));
-                        setRotation(originalRotation + currentDegree - startDegree);
+                        float d = (float) Math.toDegrees(Math.atan((cY - rectangle.getCenterY()) / (cX - rectangle.getCenterX())));
+                        rectangle.rotate(d - cD);
+                        setRotation(rectangle.getRotation());
+                        cD = d;
                         invalidate();
-                        topView.pX = event.getRawX();
-                        topView.pY = event.getRawY();
-                        topView.invalidate();
                         break;
                     case MotionEvent.ACTION_UP:
-                        getRoot().removeView(topView);
-                        if (onRotateListener != null)
-                            onRotateListener.onRotate(getRotation());
                         break;
                 }
                 return true;
@@ -284,14 +243,6 @@ public class LassoBox extends RelativeLayout {
         stickerImageView.setImageBitmap(bitmap);
     }
 
-    private float getRawPivotX() {
-        return getX() + getPivotX() + screenDiffX;
-    }
-
-    private float getRawPivotY() {
-        return getY() + getPivotY() + screenDiffY;
-    }
-
     public interface OnTranslateListener {
         void onTranslate(float x, float y);
     }
@@ -309,6 +260,161 @@ public class LassoBox extends RelativeLayout {
             bitmap.recycle();
         }
         bitmapList.clear();
+    }
+
+    /**
+     * Use to compute scale, rotation result.
+     *
+     * <pre>
+     * 0---------3
+     * |             |
+     * |             |
+     * |             |
+     * 1---------2
+     * </pre>
+     */
+    static class Rectangle {
+        public enum Points {
+            LeftTop(0), LeftBottom(1), RightBottom(2), RightTop(3);
+            private int value;
+            Points(int value) { this.value = value; }
+        };
+        private float[][] points = new float[4][2];
+        private float degrees = 0;
+        private int minWidth = 0;
+        private int minHeight = 0;
+
+        /**
+         * @param points lef-top, left-bottom, right-bottom, right-top.
+         */
+        public Rectangle(PointF[] points) {
+            for (int i = 0; i < 4; i++) {
+                this.points[i][0] = points[i].x;
+                this.points[i][1] = points[i].y;
+            }
+        }
+
+        public void setMinWidth(int minWidth) {
+            this.minWidth = minWidth;
+        }
+
+        public void setMinHeight(int minHeight) {
+            this.minHeight = minHeight;
+        }
+
+        public Path getPath() {
+            Path p = new Path();
+            p.moveTo(points[0][0], points[0][1]);
+            for (int i = 1; i < 4; i++)
+                p.lineTo(points[i][0], points[i][1]);
+            p.close();
+            return p;
+        }
+
+        public void rotate(float degrees, float px, float py) {
+            Matrix m = new Matrix();
+            m.setRotate(degrees, px, py);
+            mapPoints(m);
+            this.degrees += degrees;
+            this.degrees %= 360;
+        }
+
+        public void rotate(float degrees) {
+            rotate(degrees, getCenterX(), getCenterY());
+        }
+
+        public void translate(float dx, float dy) {
+            Matrix m = new Matrix();
+            m.setTranslate(dx, dy);
+            mapPoints(m);
+        }
+
+        public void scaleByMoveRightBottomPoint(float nx, float ny) {
+            // Let left-top point as pivot
+            points[2][0] = nx;
+            points[2][1] = ny;
+            Matrix m = new Matrix();
+            m.setRotate(-degrees, points[0][0], points[0][1]);
+            m.mapPoints(points[2]);
+            if (points[2][0] - points[0][0] < minWidth) points[2][0] = points[0][0] + minWidth;
+            if (points[2][1] - points[0][1] < minHeight) points[2][1] = points[0][1] + minHeight;
+            points[1][0] = points[0][0];
+            points[1][1] = points[2][1];
+            points[3][0] = points[2][0];
+            points[3][1] = points[0][1];
+            m.setRotate(degrees, points[0][0], points[0][1]);
+            m.mapPoints(points[1]);
+            m.mapPoints(points[2]);
+            m.mapPoints(points[3]);
+        }
+
+        public void scaleByMoveLeftTopPoint(float nx, float ny) {
+            // Let right-bottom point as pivot
+            points[0][0] = nx;
+            points[0][1] = ny;
+            Matrix m = new Matrix();
+            m.setRotate(-degrees, points[2][0], points[2][1]);
+            m.mapPoints(points[0]);
+            if (points[2][0] - points[0][0] < minWidth) points[0][0] = points[2][0] - minWidth;
+            if (points[2][1] - points[0][1] < minHeight) points[0][1] = points[2][1] - minHeight;
+            points[1][0] = points[0][0];
+            points[1][1] = points[2][1];
+            points[3][0] = points[2][0];
+            points[3][1] = points[0][1];
+            m.setRotate(degrees, points[2][0], points[2][1]);
+            m.mapPoints(points[0]);
+            m.mapPoints(points[1]);
+            m.mapPoints(points[3]);
+        }
+
+        private float getX(Points points) {
+            return this.points[points.value][0];
+        }
+
+        private float getY(Points points) {
+            return this.points[points.value][1];
+        }
+
+        private void mapPoints(Matrix m) {
+            for (int i = 0; i < 4; i++)
+                m.mapPoints(points[i]);
+        }
+
+        public float getCenterX() {
+            return (points[0][0] + points[2][0]) / 2;
+        }
+
+        public float getCenterY() {
+            return (points[0][1] + points[2][1]) / 2;
+        }
+
+        public float getWidth() {
+            return (float) Math.sqrt(Math.pow(points[0][0] - points[3][0], 2) + Math.pow(points[0][1] - points[3][1], 2));
+        }
+
+        public float getHeight() {
+            return (float) Math.sqrt(Math.pow(points[0][0] - points[1][0], 2) + Math.pow(points[0][1] - points[1][1], 2));
+        }
+
+        public float getRotation() {
+            return degrees;
+        }
+
+        public float getX() {
+            Matrix m = new Matrix();
+            m.setRotate(-degrees, getCenterX(), getCenterY());
+            float[] f = new float[2];
+            m.mapPoints(f, points[0]);
+            return f[0];
+        }
+
+        public float getY() {
+            Matrix m = new Matrix();
+            m.setRotate(-degrees, getCenterX(), getCenterY());
+            float[] f = new float[2];
+            m.mapPoints(f, points[0]);
+            return f[1];
+        }
     }
 
     class TopView extends View {

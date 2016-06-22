@@ -69,6 +69,8 @@ public class MyCanvas extends RelativeLayout {
         eraser.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
         eraser.setFlags(Paint.ANTI_ALIAS_FLAG);
         eraser.setColor(0xFFFFFFFF);
+
+
     }
 
     @Override
@@ -167,7 +169,7 @@ public class MyCanvas extends RelativeLayout {
         c.restore();
 
         // create lassBox
-        lassoBox = new LassoBox(getContext());
+        lassoBox = new LassoBox(getContext(), lassoPath);
         lassoBox.activity = activity;
         addView(lassoBox);
         lassoBox.setLassoBitmap(lassoBitmap);
