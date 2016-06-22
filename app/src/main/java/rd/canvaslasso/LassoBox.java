@@ -29,10 +29,6 @@ public class LassoBox extends RelativeLayout {
     private static final int MIN_WIDTH_DP = 100;
     private static final int MIN_HEIGHT_DP = 100;
 
-    @Bind(R.id.imageView_lasso)
-    ImageView lassoImageView;
-    @Bind(R.id.imageView_sticker)
-    ImageView stickerImageView;
     @Bind(R.id.button_scale_left_top)
     Button scaleLeftTopButton;
     @Bind(R.id.button_rotate_right_top)
@@ -84,7 +80,6 @@ public class LassoBox extends RelativeLayout {
         c.translate(-rect.left, -rect.top);
         c.drawPath(lasso, lassoPaint);
         c.restore();
-        setLassoBitmap(lassoBitmap);
         setSizeAndPosition(rect);
     }
 
@@ -292,14 +287,6 @@ public class LassoBox extends RelativeLayout {
         return (int) (dp * getResources().getDisplayMetrics().density);
     }
 
-    public float getLassoX() {
-        return getX() + lassoImageView.getX();
-    }
-
-    public float getLassoY() {
-        return getY() + lassoImageView.getY();
-    }
-
     public float getLassoCenterX() {
         return rectangle.getCenterX();
     }
@@ -314,14 +301,6 @@ public class LassoBox extends RelativeLayout {
 
     public void setOnRotateListener(OnRotateListener onRotateListener) {
         this.onRotateListener = onRotateListener;
-    }
-
-    public void setLassoBitmap(Bitmap bitmap) {
-        lassoImageView.setImageBitmap(bitmap);
-    }
-
-    public void setStickerBitmap(Bitmap bitmap) {
-        stickerImageView.setImageBitmap(bitmap);
     }
 
     public interface OnTranslateListener {

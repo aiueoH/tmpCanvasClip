@@ -119,7 +119,7 @@ public class MyCanvas extends RelativeLayout {
                 Matrix m = new Matrix();
                 m.setRotate(-lassoBox.getRotation(), lassoBox.getLassoCenterX(), lassoBox.getLassoCenterY());
                 p.transform(m);
-                Rect rect = computeLassoRect(mainBitmap, p);
+                Rect rect = computeLassoRect(p);
 
                 canvas.drawBitmap(stickerLassoBitmap, null, rect, null);
                 canvas.restore();
@@ -162,7 +162,7 @@ public class MyCanvas extends RelativeLayout {
         if (mode.equals(Mode.Lasso)) {
             lassoPath.close();
             PathMeasure pathMeasure = new PathMeasure(lassoPath, false);
-            Rect rect = computeLassoRect(mainBitmap, lassoPath);
+            Rect rect = computeLassoRect(lassoPath);
             if (rect.width() > 0 && rect.height() > 0)
                 onFinishLasso();
 //            TODO:
@@ -246,15 +246,6 @@ public class MyCanvas extends RelativeLayout {
         dismissLasso();
     }
 
-    LassoBox.OnRotateListener onRotateListener = new LassoBox.OnRotateListener() {
-        @Override
-        public void onRotate(float degree) {
-            Matrix m = new Matrix();
-            m.setRotate(degree, lassoBox.getLassoCenterX(), lassoBox.getLassoCenterY());
-            lassoPath.transform(m);
-        }
-    };
-
     public Mode getMode() {
         return mode;
     }
@@ -266,7 +257,7 @@ public class MyCanvas extends RelativeLayout {
         m.setRotate(-lassoBox.getRotation(), lassoBox.getLassoCenterX(), lassoBox.getLassoCenterY());
         lasso.transform(m);
 
-        Rect roi = computeLassoRect(src, lasso);
+        Rect roi = computeLassoRect(lasso);
         Bitmap dst = Bitmap.createBitmap(roi.width(), roi.height(), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(dst);
         c.translate(-roi.left, -roi.top);
@@ -278,7 +269,7 @@ public class MyCanvas extends RelativeLayout {
         return dst;
     }
 
-    private Rect computeLassoRect(Bitmap bitmap, Path lasso) {
+    private Rect computeLassoRect(Path lasso) {
         Region region = new Region();
         region.setPath(lasso, new Region(Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE));
         return region.getBounds();
@@ -291,11 +282,8 @@ public class MyCanvas extends RelativeLayout {
     private void onCutButtonClick() {
         if (!mode.equals(Mode.Lasso)) return;
         stickerLassoBitmap = copyLassoArea(mainBitmap, lassoPath);
-        lassoBox.setStickerBitmap(stickerLassoBitmap);
-        Rect r = computeLassoRect(mainBitmap, lassoPath);
+        Rect r = computeLassoRect(lassoPath);
         mainCanvas.save();
-//        mainCanvas.translate(lassoBox.getLassoX(), lassoBox.getLassoY());
-//        mainCanvas.rotate(lassoBox.getRotation(), r.centerX(), r.centerY());
         mainCanvas.clipPath(lassoPath);
         mainCanvas.drawPaint(eraser);
         mainCanvas.restore();
@@ -305,16 +293,9 @@ public class MyCanvas extends RelativeLayout {
     private void onCopyButtonClick() {
         if (!mode.equals(Mode.Lasso)) return;
         stickerLassoBitmap = copyLassoArea(mainBitmap, lassoPath);
-        lassoBox.setStickerBitmap(stickerLassoBitmap);
     }
 
     private void onPasteButtonClick() {
-//        Rect r = computeLassoRect(mainBitmap, lassoPath);
-//        mainCanvas.save();
-//        mainCanvas.translate(lassoBox.getLassoX(), lassoBox.getLassoY());
-//        mainCanvas.rotate(lassoBox.getRotation(), r.centerX(), r.centerY());
-//        mainCanvas.drawBitmap(stickerLassoBitmap, 0, 0, null);
-//        mainCanvas.restore();
         mainCanvas.save();
         mainCanvas.rotate(lassoBox.getRotation(), lassoBox.getLassoCenterX(), lassoBox.getLassoCenterY());
 
@@ -322,7 +303,7 @@ public class MyCanvas extends RelativeLayout {
         Matrix m = new Matrix();
         m.setRotate(-lassoBox.getRotation(), lassoBox.getLassoCenterX(), lassoBox.getLassoCenterY());
         p.transform(m);
-        Rect rect = computeLassoRect(mainBitmap, p);
+        Rect rect = computeLassoRect(p);
 
         mainCanvas.drawBitmap(stickerLassoBitmap, null, rect, null);
         mainCanvas.restore();
