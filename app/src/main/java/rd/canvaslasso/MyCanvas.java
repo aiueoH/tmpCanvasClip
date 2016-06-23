@@ -49,41 +49,17 @@ public class MyCanvas extends RelativeLayout {
         setColor(0xFFFFFFFF);
     }};
 
-    private LassoBox.OnRotateListener onRotateListener = new LassoBox.OnRotateListener() {
-        @Override
-        public void onRotate(float degree, float px, float py) {
-            Utils.rotatePath(degree, px, py, lassoPath);
-            invalidate();
-        }
-    };
-    private LassoBox.OnScaleListener onScaleListener = new LassoBox.OnScaleListener() {
-        @Override
-        public void onScale(float sx, float sy, float px, float py) {
-            Utils.rotatePath(-lassoBox.getRotation(), px, py, lassoPath);
-            Utils.scalePath(sx, sy, px, py, lassoPath);
-            Utils.rotatePath(lassoBox.getRotation(), px, py, lassoPath);
-            invalidate();
-        }
-    };
-    private LassoBox.OnTranslateListener onTranslateListener = new LassoBox.OnTranslateListener() {
-        @Override
-        public void onTranslate(float dx, float dy) {
-            Utils.translatePath(dx, dy, lassoPath);
-            invalidate();
-        }
-    };
-
     private ArrayList<Path> pathList = new ArrayList<>();
+
     private Path currentPath;
     private Path lassoPath;
     private Mode mode = Mode.Brush;
-
     private Bitmap mainBitmap;
+
     private Bitmap drawingLassoBitmap;
     private Bitmap stickerLassoBitmap;
     private Canvas mainCanvas;
     private Canvas lassoCanvas;
-
     private float preX, preY;
 
     private boolean isFirstDraw = true;
@@ -108,7 +84,7 @@ public class MyCanvas extends RelativeLayout {
                 canvas.rotate(lassoBox.getRotation(), lassoBox.getCenterX(), lassoBox.getCenterY());
                 Path p = new Path(lassoPath);
                 Utils.rotatePath(-lassoBox.getRotation(), lassoBox.getCenterX(), lassoBox.getCenterY(), p);
-                Rect bounds = computeLassoBounds(p);
+                Rect bounds = Utils.getPathBounds(p);
                 canvas.drawBitmap(stickerLassoBitmap, null, bounds, null);
                 canvas.restore();
             }
@@ -173,10 +149,27 @@ public class MyCanvas extends RelativeLayout {
         }
         if (mode.equals(Mode.Lasso)) {
             lassoPath.close();
-            Rect rect = computeLassoBounds(lassoPath);
+            Rect rect = Utils.getPathBounds(lassoPath);
             if (rect.width() > 0 && rect.height() > 0)
                 onFinishLasso();
         }
+    }
+
+    private void onLassoBoxRotate(float degree, float px, float py) {
+        Utils.rotatePath(degree, px, py, lassoPath);
+        invalidate();
+    }
+
+    private void onLassoBoxScale(float sx, float sy, float px, float py) {
+        Utils.rotatePath(-lassoBox.getRotation(), px, py, lassoPath);
+        Utils.scalePath(sx, sy, px, py, lassoPath);
+        Utils.rotatePath(lassoBox.getRotation(), px, py, lassoPath);
+        invalidate();
+    }
+
+    private void onLassoBoxTranslate(float dx, float dy) {
+        Utils.translatePath(dx, dy, lassoPath);
+        invalidate();
     }
 
     private View buttonsBox;
@@ -187,9 +180,24 @@ public class MyCanvas extends RelativeLayout {
         // create lassBox
         lassoBox = new LassoBox(getContext(), this, Utils.getPathBounds(lassoPath));
         lassoBox.activity = activity;
-        lassoBox.setOnRotateListener(onRotateListener);
-        lassoBox.setOnScaleListener(onScaleListener);
-        lassoBox.setOnTranslateListener(onTranslateListener);
+        lassoBox.setOnRotateListener(new LassoBox.OnRotateListener() {
+            @Override
+            public void onRotate(float degree, float px, float py) {
+                onLassoBoxRotate(degree, px, py);
+            }
+        });
+        lassoBox.setOnScaleListener(new LassoBox.OnScaleListener() {
+            @Override
+            public void onScale(float sx, float sy, float px, float py) {
+                onLassoBoxScale(sx, sy, px, py);
+            }
+        });
+        lassoBox.setOnTranslateListener(new LassoBox.OnTranslateListener() {
+            @Override
+            public void onTranslate(float dx, float dy) {
+                onLassoBoxTranslate(dx, dy);
+            }
+        });
 
         buttonsBox = createButtonsBox();
         addView(buttonsBox);
@@ -252,7 +260,7 @@ public class MyCanvas extends RelativeLayout {
     private Bitmap copyLassoArea(Bitmap src, Path lasso) {
         lasso = new Path(lasso);
         Utils.rotatePath(-lassoBox.getRotation(), lassoBox.getCenterX(), lassoBox.getCenterY(), lasso);
-        Rect bounds = computeLassoBounds(lasso);
+        Rect bounds = Utils.getPathBounds(lasso);
         Bitmap dst = Bitmap.createBitmap(bounds.width(), bounds.height(), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(dst);
         c.translate(-bounds.left, -bounds.top);
@@ -262,12 +270,6 @@ public class MyCanvas extends RelativeLayout {
         return dst;
     }
 
-    private Rect computeLassoBounds(Path lasso) {
-        Region region = new Region();
-        region.setPath(lasso, new Region(Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE));
-        return region.getBounds();
-    }
-
     private void onCancelButtonClick() {
         dismissLasso();
     }
@@ -275,7 +277,6 @@ public class MyCanvas extends RelativeLayout {
     private void onCutButtonClick() {
         if (!mode.equals(Mode.Lasso)) return;
         stickerLassoBitmap = copyLassoArea(mainBitmap, lassoPath);
-        Rect r = computeLassoBounds(lassoPath);
         mainCanvas.save();
         mainCanvas.clipPath(lassoPath);
         mainCanvas.drawPaint(eraser);
@@ -294,7 +295,7 @@ public class MyCanvas extends RelativeLayout {
 
         Path p = new Path(lassoPath);
         Utils.rotatePath(-lassoBox.getRotation(), lassoBox.getCenterX(), lassoBox.getCenterY(), p);
-        Rect rect = computeLassoBounds(p);
+        Rect rect = Utils.getPathBounds(p);
 
         mainCanvas.drawBitmap(stickerLassoBitmap, null, rect, null);
         mainCanvas.restore();
