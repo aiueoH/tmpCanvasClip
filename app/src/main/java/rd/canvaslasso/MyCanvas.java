@@ -32,9 +32,47 @@ public class MyCanvas extends RelativeLayout {
 
     public enum Mode {Brush, Lasso}
 
-    private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private Paint lassoPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private Paint eraser;
+    private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG) {{
+        setColor(Color.GREEN);
+        setStyle(Paint.Style.STROKE);
+        setStrokeWidth(100);
+    }};
+    private Paint lassoPaint = new Paint(Paint.ANTI_ALIAS_FLAG) {{
+        setColor(Color.RED);
+        setStyle(Paint.Style.STROKE);
+        setStrokeWidth(10);
+        setPathEffect(new DashPathEffect(new float[] { 20, 30}, 0));
+    }};
+    private Paint eraser = new Paint() {{
+        setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+        setFlags(Paint.ANTI_ALIAS_FLAG);
+        setColor(0xFFFFFFFF);
+    }};
+
+    private LassoBox.OnRotateListener onRotateListener = new LassoBox.OnRotateListener() {
+        @Override
+        public void onRotate(float degree, float px, float py) {
+            Utils.rotatePath(degree, px, py, lassoPath);
+            invalidate();
+        }
+    };
+    private LassoBox.OnScaleListener onScaleListener = new LassoBox.OnScaleListener() {
+        @Override
+        public void onScale(float sx, float sy, float px, float py) {
+            Utils.rotatePath(-lassoBox.getRotation(), px, py, lassoPath);
+            Utils.scalePath(sx, sy, px, py, lassoPath);
+            Utils.rotatePath(lassoBox.getRotation(), px, py, lassoPath);
+            invalidate();
+        }
+    };
+    private LassoBox.OnTranslateListener onTranslateListener = new LassoBox.OnTranslateListener() {
+        @Override
+        public void onTranslate(float dx, float dy) {
+            Utils.translatePath(dx, dy, lassoPath);
+            invalidate();
+        }
+    };
+
     private ArrayList<Path> pathList = new ArrayList<>();
     private Path currentPath;
     private Path lassoPath;
@@ -55,21 +93,6 @@ public class MyCanvas extends RelativeLayout {
     public MyCanvas(Context context, AttributeSet attrs) {
         super(context, attrs);
         setWillNotDraw(false);
-        paint.setColor(Color.GREEN);
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(100);
-
-        lassoPaint.setColor(Color.RED);
-        lassoPaint.setStyle(Paint.Style.STROKE);
-        lassoPaint.setStrokeWidth(10);
-        lassoPaint.setPathEffect(new DashPathEffect(new float[] { 20, 30}, 0));
-
-        eraser = new Paint();
-        eraser.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
-        eraser.setFlags(Paint.ANTI_ALIAS_FLAG);
-        eraser.setColor(0xFFFFFFFF);
-
-
     }
 
     @Override
@@ -164,6 +187,9 @@ public class MyCanvas extends RelativeLayout {
         // create lassBox
         lassoBox = new LassoBox(getContext(), this, lassoPath);
         lassoBox.activity = activity;
+        lassoBox.setOnRotateListener(onRotateListener);
+        lassoBox.setOnScaleListener(onScaleListener);
+        lassoBox.setOnTranslateListener(onTranslateListener);
 
         buttonsBox = createButtonsBox();
         addView(buttonsBox);
