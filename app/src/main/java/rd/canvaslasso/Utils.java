@@ -30,6 +30,12 @@ public class Utils {
             m.mapPoints(points[i]);
     }
 
+    public static void translatePoints(float dx, float dy, float[] ... points) {
+        Matrix m = createTranslateMatrix(dx, dy);
+        for (int i = 0; i < points.length; i++)
+            m.mapPoints(points[i]);
+    }
+
     public static void rotatePoint(float degrees, float px, float py, float[] dst, float[] src) {
         createRotationMatrix(degrees, px, py).mapPoints(dst, src);
     }
