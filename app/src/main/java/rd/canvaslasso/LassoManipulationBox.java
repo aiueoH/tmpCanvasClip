@@ -13,7 +13,7 @@ import android.widget.RelativeLayout;
 import butterknife.Bind;
 import butterknife.ButterKnife;
 
-public class LassoBox extends RelativeLayout {
+public class LassoManipulationBox extends RelativeLayout {
     private static final int MIN_WIDTH_DP = 100;
     private static final int MIN_HEIGHT_DP = 100;
 
@@ -39,7 +39,7 @@ public class LassoBox extends RelativeLayout {
     private int paddingWidth = 0;
     private int paddingHeight = 0;
 
-    public LassoBox(Context context, RelativeLayout parent, Rect lassoBounds) {
+    public LassoManipulationBox(Context context, RelativeLayout parent, Rect lassoBounds) {
         super(context);
         parent.addView(this);
         initView();
@@ -54,7 +54,7 @@ public class LassoBox extends RelativeLayout {
 
     private void initView() {
         LayoutInflater layoutInflater = LayoutInflater.from(getContext());
-        View view = layoutInflater.inflate(R.layout.widget_lasso_frame, null);
+        View view = layoutInflater.inflate(R.layout.widget_lasso_manipulation_box, null);
         addView(view);
         ButterKnife.bind(this);
     }
