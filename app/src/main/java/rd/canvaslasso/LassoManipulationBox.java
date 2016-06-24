@@ -26,7 +26,6 @@ public class LassoManipulationBox extends RelativeLayout {
     @Bind(R.id.button_scale_right_bottom)
     Button scaleRightBottomButton;
 
-    public Activity activity;
     private OnTranslateListener onTranslateListener;
     private OnRotateListener onRotateListener;
     private OnScaleListener onScaleListener;
@@ -238,7 +237,6 @@ public class LassoManipulationBox extends RelativeLayout {
         return rectangle.getCenterY();
     }
 
-    ////////////////////////////////////////
     public void setOnScaleListener(OnScaleListener onScaleListener) {
         this.onScaleListener = onScaleListener;
     }

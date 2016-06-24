@@ -16,12 +16,7 @@ import android.widget.RelativeLayout;
 
 import java.util.ArrayList;
 
-/**
- * Created by Wei on 2016/6/14.
- */
 public class MyCanvas extends RelativeLayout {
-    public Activity activity;
-    private String TAG = getClass().getSimpleName();
 
     public enum Mode {Brush, Lasso}
 
@@ -34,7 +29,6 @@ public class MyCanvas extends RelativeLayout {
     private ArrayList<Path> pathList = new ArrayList<>();
 
     private Path currentPath;
-    private Path lassoPath;
     private Mode mode = Mode.Brush;
     private Bitmap mainBitmap;
 
@@ -85,8 +79,6 @@ public class MyCanvas extends RelativeLayout {
                     mainCanvas.drawPoint(x, y, pp);
                 }
             }
-
-
             lassoController = new LassoController(getContext(), mainBitmap, MyCanvas.this);
         }
     }

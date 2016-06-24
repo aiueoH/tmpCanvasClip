@@ -8,7 +8,6 @@ import android.widget.Button;
 
 public class MainActivity extends AppCompatActivity {
     private Button button;
-    private Button clipButton;
     private MyCanvas myCanvas;
 
     @Override
@@ -17,7 +16,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         myCanvas = (MyCanvas) findViewById(R.id.myCanvas);
-        myCanvas.activity = this;
         button = (Button) findViewById(R.id.button);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
